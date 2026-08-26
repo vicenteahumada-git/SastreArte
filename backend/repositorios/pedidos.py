@@ -109,10 +109,15 @@ def listar_montos() -> list[dict]:
 
     La tasa viaja con cada fila porque el saldo total es la suma de saldos
     individuales, y cada uno se calcula con la alícuota de su propio pedido.
+
+    Los cancelados quedan fuera: nadie debe el saldo de un encargo que no se
+    va a hacer, y contarlo inflaba el pendiente del panel. Los entregados sí
+    cuentan, porque una entrega impaga es exactamente una deuda.
     """
     with conexion() as conn:
         return conn.execute(
-            "SELECT tasa_iva, valor_neto, total_pagado FROM vista_pedidos"
+            """SELECT tasa_iva, valor_neto, total_pagado
+               FROM vista_pedidos WHERE estado <> 'CANCELADO'"""
         ).fetchall()
 
 

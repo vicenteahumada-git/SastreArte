@@ -289,3 +289,29 @@ def test_el_cliente_no_puede_imponer_su_propia_tasa(cliente_api, crear_cliente):
         },
     )
     assert respuesta.get_json()["datos"]["tasa_iva"] == 0.19
+
+
+def test_un_pedido_cancelado_no_suma_al_saldo_pendiente(cliente_api, crear_pedido):
+    """Nadie debe el saldo de un encargo que no se va a hacer."""
+    vigente = crear_pedido(valor_base=100000)
+    cancelado = crear_pedido(valor_base=50000)
+    cliente_api.patch(
+        f"/api/pedidos/{cancelado['id_pedido']}/estado", json={"estado": "CANCELADO"}
+    )
+
+    saldo = cliente_api.get("/api/resumen").get_json()["datos"]["metricas"][
+        "saldo_pendiente"
+    ]
+    assert saldo == vigente["total"]
+
+
+def test_una_entrega_impaga_si_suma_al_saldo(cliente_api, crear_pedido):
+    """Entregar sin cobrar es justamente una deuda."""
+    pedido = crear_pedido(valor_base=100000)
+    cliente_api.patch(
+        f"/api/pedidos/{pedido['id_pedido']}/estado", json={"estado": "ENTREGADO"}
+    )
+    saldo = cliente_api.get("/api/resumen").get_json()["datos"]["metricas"][
+        "saldo_pendiente"
+    ]
+    assert saldo == pedido["total"]
