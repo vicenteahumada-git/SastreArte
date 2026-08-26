@@ -1,0 +1,18 @@
+# Configuración de ruff para el backend.
+#
+# Sin esto, ruff no sabe que configuracion, repositorios, rutas y servicios
+# son paquetes del propio proyecto: los toma por librerías de terceros y
+# pide mezclarlos con flask o psycopg en el mismo bloque de imports.
+
+target-version = "py311"
+
+[lint]
+extend-select = [
+    "I",    # orden de los imports
+    "UP",   # sintaxis vieja que ya no hace falta
+    "B",    # errores frecuentes (mutables por defecto, except sin from, ...)
+    "DTZ",  # fechas sin zona horaria: acá el contenedor va en UTC y Chile no
+]
+
+[lint.isort]
+known-first-party = ["configuracion", "repositorios", "rutas", "servicios"]

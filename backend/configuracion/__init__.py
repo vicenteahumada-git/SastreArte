@@ -1,0 +1,2 @@
+"""Configuración compartida del backend."""
+

@@ -1,0 +1,111 @@
+/* Boleta del cliente: oculta en pantalla, es lo único que sale impreso.
+   El diseño imita el talonario de papel del taller: tinta azul, recuadros
+   y los datos en el mismo orden.
+
+   Para A5 en vez de media carta, cambiar el size por: A5 portrait */
+
+.boleta { display: none; }
+
+@media print {
+  /* Media carta: 5.5 x 8.5 pulgadas, media hoja carta. Va en pulgadas porque
+     "half-letter" no es un tamaño con nombre en CSS.
+
+     El margen cero es a propósito: es lo que hace que el navegador deje de
+     imprimir su encabezado con la URL y la fecha en el borde de la hoja.
+     El margen visible lo pone el padding de .boleta. */
+  @page { size: 5.5in 8.5in; margin: 0; }
+
+  /* Fuera todo lo que es interfaz; queda sólo el comprobante. */
+  .aplicacion, .modal-fondo, .notificacion { display: none !important; }
+
+  html, body { margin: 0; background: white; }
+
+  .boleta {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 100vh;
+    padding: 11mm 10mm;
+    color: var(--boleta-tinta);
+    font-family: var(--sans);
+    font-size: 10pt;
+    line-height: 1.3;
+  }
+
+  /* Sin esto los navegadores descartan color y fondos al imprimir. */
+  .boleta, .boleta * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+
+.boleta {
+  --boleta-tinta: #16325c;
+  --boleta-trazo: #2a4a7f;
+}
+
+.boleta__cabecera { text-align: center; }
+.boleta__logo { display: block; width: 52mm; margin: 0 auto 1pt; }
+.boleta__nombre { margin: 0 0 2pt; font-family: var(--serif); font-size: 22pt; font-weight: 500; }
+.boleta__direccion { margin: 0; font-size: 8pt; letter-spacing: .02em; text-transform: uppercase; }
+
+.boleta__aviso {
+  display: inline-block;
+  margin: 5pt 0 0;
+  border: 1pt solid var(--boleta-trazo);
+  border-radius: 999px;
+  padding: 2pt 12pt;
+  font-size: 8.5pt;
+  font-weight: 500;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.boleta__guia {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 16pt;
+  margin: 9pt 0 3pt;
+}
+.boleta__guia span { font-size: 12pt; font-weight: 500; letter-spacing: .14em; text-transform: uppercase; }
+.boleta__guia strong { font-size: 15pt; font-weight: 500; letter-spacing: .05em; }
+
+.boleta__lugar { margin: 0 0 9pt; font-size: 9pt; text-align: center; }
+.boleta__lugar em { font-style: normal; font-weight: 500; }
+
+/* Renglones con línea de escritura, como los del talonario. */
+.boleta__datos { display: flex; flex-wrap: wrap; gap: 4pt 10pt; margin-bottom: 9pt; }
+.boleta__linea { display: flex; align-items: baseline; gap: 5pt; margin: 0; flex: 1 1 40%; }
+.boleta__linea--nombre { flex: 1 1 55%; }
+.boleta__linea--ancha { flex: 1 1 100%; }
+.boleta__linea > span { flex: 0 0 auto; font-size: 8.5pt; }
+.boleta__linea > span::after { content: ':'; }
+.boleta__linea em {
+  flex: 1;
+  border-bottom: .6pt solid var(--boleta-trazo);
+  padding: 0 2pt 1pt;
+  font-size: 10pt;
+  font-style: normal;
+  font-weight: 500;
+}
+
+.boleta__detalle { width: 100%; border-collapse: collapse; border: 1.2pt solid var(--boleta-trazo); margin-bottom: 8pt; }
+.boleta__detalle th, .boleta__detalle td { border: .6pt solid var(--boleta-trazo); padding: 4pt 5pt; vertical-align: top; }
+.boleta__detalle thead th {
+  background: #e8eef7;
+  font-size: 7.5pt;
+  font-weight: 500;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+}
+/* La hoja es angosta (139.7 mm): las tres columnas de montos se ajustan a lo
+   justo para que la descripción no quede espichada. */
+.boleta__detalle thead th:not(:first-child) { width: 19mm; text-align: right; }
+.boleta__detalle td { font-size: 9.5pt; }
+/* Recuadro alto a propósito: media carta da hoja de sobra, y en vez de dejarla
+   en blanco se la lleva el encargo, que es donde se anotan las medidas a mano.
+   La altura está calculada para que la nota final quede a la misma distancia
+   del borde inferior que la cabecera del superior. */
+.boleta__encargo { height: 100mm; line-height: 1.45; }
+.boleta__detalle td:not(:first-child) { text-align: right; font-variant-numeric: tabular-nums; }
+.boleta__saldo { font-size: 11pt; font-weight: 500; }
+
+.boleta__nota { margin: 0; border-top: .6pt solid var(--boleta-trazo); padding-top: 4pt; font-size: 7.5pt; }

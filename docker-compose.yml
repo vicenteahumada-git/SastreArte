@@ -1,0 +1,65 @@
+services:
+  postgresql:
+    image: postgres:16-alpine
+    container_name: sastrearte_postgresql
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sastrearte}
+      POSTGRES_USER: ${POSTGRES_USER:-sastrearte}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sastrearte_local}
+    ports:
+      - "5432:5432"
+    volumes:
+      - datos_postgresql:/var/lib/postgresql/data
+      - ./postgresql/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+      - ./postgresql/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sastrearte} -d ${POSTGRES_DB:-sastrearte}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    build:
+      context: ./backend
+    container_name: sastrearte_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql://sastrearte:sastrearte_local@postgresql:5432/sastrearte}
+      DB_POOL_MIN: ${DB_POOL_MIN:-1}
+      DB_POOL_MAX: ${DB_POOL_MAX:-10}
+      TASA_IVA: ${TASA_IVA:-0.19}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      ZONA_HORARIA: ${ZONA_HORARIA:-America/Santiago}
+      FLASK_ENV: development
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/aplicacion
+      - ./postgresql:/postgresql:ro
+    depends_on:
+      postgresql:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: sastrearte_frontend
+    restart: unless-stopped
+    environment:
+      # Ruta relativa servida por el proxy de Vite (ver vite.config.ts).
+      VITE_API_URL: ${VITE_API_URL:-/api}
+      VITE_API_PROXY: ${VITE_API_PROXY:-http://backend:8000}
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./frontend:/aplicacion
+      - dependencias_frontend:/aplicacion/node_modules
+    depends_on:
+      - backend
+
+volumes:
+  datos_postgresql:
+  dependencias_frontend:
+
