@@ -21,7 +21,7 @@ def test_modificar_tambien_valida_la_unidad(cliente_api, crear_insumo):
     insumo = crear_insumo()
     respuesta = cliente_api.put(
         f"/api/insumos/{insumo['id_insumo']}",
-        json={"nombre": insumo["nombre"], "unidad_medida": "yardas"},
+        json={"nombre": insumo["nombre"], "stock_actual": 5, "unidad_medida": "yardas"},
     )
     assert respuesta.status_code == 400
 
@@ -42,7 +42,7 @@ def test_asocia_insumo_a_pedido(cliente_api, crear_pedido, crear_insumo):
     assert respuesta.get_json()["datos"]["cantidad"] == 2.5
 
 
-def test_modifica_la_cantidad_requerida(cliente_api, crear_pedido, crear_insumo):
+def test_modifica_cantidad_y_marca_comprado(cliente_api, crear_pedido, crear_insumo):
     pedido = crear_pedido()
     insumo = crear_insumo()
     cliente_api.post(
@@ -51,28 +51,11 @@ def test_modifica_la_cantidad_requerida(cliente_api, crear_pedido, crear_insumo)
     )
     respuesta = cliente_api.put(
         f"/api/pedidos/{pedido['id_pedido']}/insumos/{insumo['id_insumo']}",
-        json={"cantidad": 3},
+        json={"cantidad": 3, "estado_insumo": "COMPRADO"},
     )
     detalle = respuesta.get_json()["datos"]
     assert detalle["cantidad"] == 3
-    assert detalle["estado_insumo"] == "REQUERIDO"
-
-
-def test_no_se_cambia_la_cantidad_de_lo_ya_consumido(
-    cliente_api, crear_pedido, crear_insumo
-):
-    """Cambiarla dejaría el stock descontado por una cantidad que ya no existe."""
-    pedido = crear_pedido()
-    insumo = crear_insumo(stock=10)
-    ruta = f"/api/pedidos/{pedido['id_pedido']}/insumos/{insumo['id_insumo']}"
-    cliente_api.post(
-        f"/api/pedidos/{pedido['id_pedido']}/insumos",
-        json={"id_insumo": insumo["id_insumo"], "cantidad": 2},
-    )
-    cliente_api.put(ruta, json={"estado_insumo": "CONSUMIDO"})
-    respuesta = cliente_api.put(ruta, json={"cantidad": 5})
-    assert respuesta.status_code == 400
-    assert "consumido" in respuesta.get_json()["error"].lower()
+    assert detalle["estado_insumo"] == "COMPRADO"
 
 
 def test_elimina_insumo_del_pedido(cliente_api, crear_pedido, crear_insumo):

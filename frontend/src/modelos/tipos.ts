@@ -121,18 +121,8 @@ export interface Insumo {
 export interface DetalleInsumo extends Insumo {
   id_pedido: number
   cantidad: number
-  /** REQUERIDO: anotado. CONSUMIDO: ya salió de bodega y dejó su movimiento. */
-  estado_insumo: 'REQUERIDO' | 'CONSUMIDO'
-}
-
-export interface MovimientoInsumo {
-  id_movimiento: number
-  cantidad: number
-  motivo: 'INVENTARIO_INICIAL' | 'COMPRA' | 'CONSUMO' | 'AJUSTE' | 'DEVOLUCION'
-  id_pedido: number | null
+  estado_insumo: 'PENDIENTE_COMPRA' | 'COMPRADO'
   id_lista_compra: number | null
-  observacion: string | null
-  fecha: string
 }
 
 export interface PendienteCompra {
@@ -140,29 +130,27 @@ export interface PendienteCompra {
   nombre: string
   unidad_medida: UnidadMedida
   stock_actual: number
-  /** Lo que piden los pedidos activos. */
-  requerido: number
-  /** Lo ya solicitado en listas abiertas. */
-  en_camino: number
-  /** requerido − stock − en_camino: lo que hay que salir a comprar. */
+  /** Lo requerido que todavía no entró en ninguna lista. */
+  cantidad_total: number
+  /** Lo anterior menos el stock disponible: lo que hay que salir a comprar. */
   cantidad_a_comprar: number
   cantidad_pedidos: number
-  pedidos: string | null
+  pedidos: string
+  disponible_para_nueva_lista: boolean
 }
 
 export interface ListaCompra {
   id_lista_compra: number
   fecha_generacion: string
-  fecha_recepcion: string | null
-  estado: 'ABIERTA' | 'RECIBIDA' | 'ANULADA'
   cantidad_items?: number
-  total_solicitado?: number
+  cantidad_pedidos?: number
   detalles?: Array<{
+    id_pedido: number
     id_insumo: number
     nombre: string
     unidad_medida: UnidadMedida
-    cantidad_solicitada: number
-    cantidad_recibida: number | null
+    cantidad: number
+    estado_insumo: string
   }>
 }
 

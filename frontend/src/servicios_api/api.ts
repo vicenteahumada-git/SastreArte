@@ -1,7 +1,6 @@
 import type {
   Cliente,
   DetalleInsumo,
-  MovimientoInsumo,
   FiltrosPedido,
   Insumo,
   ListaCompra,
@@ -132,12 +131,4 @@ export const api = {
   listasCompra: () => solicitud<ListaCompra[]>('/listas-compra'),
   listaCompra: (id: number) => solicitud<ListaCompra>(`/listas-compra/${id}`),
   generarListaCompra: () => solicitud<ListaCompra>('/listas-compra', json('POST')),
-  recibirListaCompra: (id: number, recibidas: Record<number, number> = {}) =>
-    solicitud<ListaCompra>(`/listas-compra/${id}/recepcion`, json('PATCH', { recibidas })),
-  anularListaCompra: (id: number) =>
-    solicitud<ListaCompra>(`/listas-compra/${id}/anulacion`, json('PATCH')),
-  ajustarStock: (id: number, datos: Record<string, unknown>) =>
-    solicitud<Insumo>(`/insumos/${id}/ajuste`, json('PATCH', datos)),
-  movimientosInsumo: (id: number) =>
-    solicitud<MovimientoInsumo[]>(`/insumos/${id}/movimientos`),
 }

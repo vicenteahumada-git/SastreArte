@@ -98,100 +98,33 @@ CREATE TABLE pago (
 CREATE TABLE insumo (
     id_insumo BIGINT GENERATED ALWAYS AS IDENTITY,
     nombre VARCHAR(150) NOT NULL,
+    stock_actual NUMERIC(12,2) NOT NULL DEFAULT 0,
     unidad_medida VARCHAR(30) NOT NULL,
-    -- El stock NO se guarda acá: se deriva de movimiento_insumo, igual que
-    -- el IVA se deriva de la tasa. Una cantidad almacenada y una lista de
-    -- movimientos siempre terminan discrepando, y entonces no hay forma de
-    -- saber cuál de las dos miente. Ver vista_insumos.
     CONSTRAINT pk_insumo PRIMARY KEY (id_insumo),
+    CONSTRAINT chk_stock_actual CHECK (stock_actual >= 0),
     CONSTRAINT chk_unidad_medida CHECK (
         unidad_medida IN ('MM', 'CM', 'METROS', 'UNIDADES')
     )
 );
 
--- Libro de movimientos: la única fuente de verdad del stock.
--- Cada entrada o salida deja su fila, con el motivo y el documento que la
--- originó, de modo que cualquier saldo se puede explicar hacia atrás.
-CREATE TABLE movimiento_insumo (
-    id_movimiento BIGINT GENERATED ALWAYS AS IDENTITY,
-    id_insumo BIGINT NOT NULL,
-    -- Con signo: positivo entra al taller, negativo sale.
-    cantidad NUMERIC(12,2) NOT NULL,
-    motivo VARCHAR(20) NOT NULL,
-    -- Documentos de origen. Quedan en NULL si el documento se borra: el
-    -- movimiento sobrevive, porque la mercadería se movió igual.
-    id_pedido BIGINT,
-    id_lista_compra BIGINT,
-    observacion VARCHAR(200),
-    fecha TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT pk_movimiento_insumo PRIMARY KEY (id_movimiento),
-    CONSTRAINT fk_movimiento_insumo FOREIGN KEY (id_insumo) REFERENCES insumo(id_insumo),
-    CONSTRAINT fk_movimiento_pedido FOREIGN KEY (id_pedido) REFERENCES pedido(id_pedido) ON DELETE SET NULL,
-    CONSTRAINT chk_movimiento_cantidad CHECK (cantidad <> 0),
-    CONSTRAINT chk_movimiento_motivo CHECK (
-        motivo IN ('INVENTARIO_INICIAL', 'COMPRA', 'CONSUMO', 'AJUSTE', 'DEVOLUCION')
-    ),
-    -- El signo tiene que concordar con el motivo, o el libro deja de
-    -- significar algo: una compra que resta stock no es una compra.
-    CONSTRAINT chk_movimiento_signo CHECK (
-        (motivo IN ('COMPRA', 'DEVOLUCION') AND cantidad > 0)
-        OR (motivo = 'CONSUMO' AND cantidad < 0)
-        OR motivo IN ('INVENTARIO_INICIAL', 'AJUSTE')
-    )
-);
-
--- Documento de compra. Es historia: una vez generado no depende de los
--- pedidos que lo originaron, y por eso borrar un pedido ya no lo vacía.
 CREATE TABLE lista_compra (
     id_lista_compra BIGINT GENERATED ALWAYS AS IDENTITY,
     fecha_generacion TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    fecha_recepcion TIMESTAMP,
-    estado VARCHAR(15) NOT NULL DEFAULT 'ABIERTA',
-    CONSTRAINT pk_lista_compra PRIMARY KEY (id_lista_compra),
-    CONSTRAINT chk_estado_lista CHECK (estado IN ('ABIERTA', 'RECIBIDA', 'ANULADA')),
-    -- Una lista recibida tiene fecha de recepción y ninguna otra la tiene.
-    CONSTRAINT chk_recepcion_coherente CHECK (
-        (estado = 'RECIBIDA') = (fecha_recepcion IS NOT NULL)
-    )
+    CONSTRAINT pk_lista_compra PRIMARY KEY (id_lista_compra)
 );
 
--- Renglones de la lista. La cantidad se copia al generarla en vez de
--- recalcularse desde los pedidos: lo que se salió a comprar es un hecho, y
--- no puede cambiar porque después alguien edite o borre un pedido.
-CREATE TABLE detalle_lista_compra (
-    id_lista_compra BIGINT NOT NULL,
-    id_insumo BIGINT NOT NULL,
-    cantidad_solicitada NUMERIC(12,2) NOT NULL,
-    cantidad_recibida NUMERIC(12,2),
-    CONSTRAINT pk_detalle_lista_compra PRIMARY KEY (id_lista_compra, id_insumo),
-    CONSTRAINT fk_detalle_lista FOREIGN KEY (id_lista_compra) REFERENCES lista_compra(id_lista_compra) ON DELETE CASCADE,
-    CONSTRAINT fk_detalle_lista_insumo FOREIGN KEY (id_insumo) REFERENCES insumo(id_insumo),
-    CONSTRAINT chk_cantidad_solicitada CHECK (cantidad_solicitada > 0),
-    CONSTRAINT chk_cantidad_recibida CHECK (cantidad_recibida IS NULL OR cantidad_recibida >= 0)
-);
-
--- La referencia va acá y no dentro de movimiento_insumo porque esa tabla se
--- declara antes que lista_compra. Al borrarse la lista el movimiento queda,
--- sin documento: la mercadería entró igual.
-ALTER TABLE movimiento_insumo
-    ADD CONSTRAINT fk_movimiento_lista
-    FOREIGN KEY (id_lista_compra) REFERENCES lista_compra(id_lista_compra) ON DELETE SET NULL;
-
--- Lo que un pedido necesita. Sólo eso: ni si hay que comprarlo, ni en qué
--- lista salió. Antes esta tabla cumplía los tres papeles a la vez, y por eso
--- borrar un pedido rompía una compra ya hecha.
 CREATE TABLE detalle_insumo (
     id_pedido BIGINT NOT NULL,
     id_insumo BIGINT NOT NULL,
+    id_lista_compra BIGINT,
     cantidad NUMERIC(12,2) NOT NULL,
-    -- REQUERIDO: anotado pero todavía no descontado de bodega.
-    -- CONSUMIDO: ya salió del estante y dejó su movimiento.
-    estado_insumo VARCHAR(30) NOT NULL DEFAULT 'REQUERIDO',
+    estado_insumo VARCHAR(30) NOT NULL DEFAULT 'PENDIENTE_COMPRA',
     CONSTRAINT pk_detalle_insumo PRIMARY KEY (id_pedido, id_insumo),
     CONSTRAINT fk_detalle_insumo_pedido FOREIGN KEY (id_pedido) REFERENCES pedido(id_pedido) ON DELETE CASCADE,
     CONSTRAINT fk_detalle_insumo_insumo FOREIGN KEY (id_insumo) REFERENCES insumo(id_insumo),
+    CONSTRAINT fk_detalle_insumo_lista FOREIGN KEY (id_lista_compra) REFERENCES lista_compra(id_lista_compra) ON DELETE SET NULL,
     CONSTRAINT chk_cantidad_insumo CHECK (cantidad > 0),
-    CONSTRAINT chk_estado_insumo CHECK (estado_insumo IN ('REQUERIDO', 'CONSUMIDO'))
+    CONSTRAINT chk_estado_insumo CHECK (estado_insumo IN ('PENDIENTE_COMPRA', 'COMPRADO'))
 );
 
 -- La vista sólo resuelve lo que depende de los datos almacenados:
@@ -210,18 +143,6 @@ LEFT JOIN (
     GROUP BY id_pedido
 ) pp ON pp.id_pedido = p.id_pedido;
 
--- El stock sale del libro de movimientos, nunca de una columna guardada.
-CREATE VIEW vista_insumos AS
-SELECT
-    i.id_insumo, i.nombre, i.unidad_medida,
-    COALESCE(m.stock, 0) AS stock_actual
-FROM insumo i
-LEFT JOIN (
-    SELECT id_insumo, SUM(cantidad) AS stock
-    FROM movimiento_insumo
-    GROUP BY id_insumo
-) m ON m.id_insumo = i.id_insumo;
-
 CREATE INDEX idx_cliente_nombre ON cliente(nombre);
 CREATE INDEX idx_cliente_telefono ON cliente(telefono);
 CREATE INDEX idx_pedido_cliente ON pedido(id_cliente);
@@ -230,10 +151,4 @@ CREATE INDEX idx_pedido_fecha_entrega ON pedido(fecha_entrega);
 CREATE INDEX idx_asignacion_trabajador ON asignacion(id_trabajador);
 CREATE INDEX idx_pago_pedido ON pago(id_pedido);
 CREATE INDEX idx_detalle_insumo_insumo ON detalle_insumo(id_insumo);
--- Único sobre lower(nombre) y no sobre nombre a secas, porque el servicio
--- compara sin distinguir mayúsculas: si no, "Hilo" e "hilo" pasarían el
--- control de la base y los rechazaría la aplicación, que es peor.
-CREATE UNIQUE INDEX uq_insumo_nombre ON insumo (lower(nombre));
-CREATE INDEX idx_movimiento_insumo ON movimiento_insumo(id_insumo);
-CREATE INDEX idx_detalle_lista_insumo ON detalle_lista_compra(id_insumo);
 

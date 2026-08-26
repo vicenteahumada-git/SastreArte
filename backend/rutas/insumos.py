@@ -18,12 +18,6 @@ def listar_insumos():
     return respuesta(insumos.listar())
 
 
-@insumos_bp.get("/api/insumos/<int:id_insumo>")
-def obtener_insumo(id_insumo: int):
-    requiere_dueno()
-    return respuesta(insumos.obtener(id_insumo))
-
-
 @insumos_bp.post("/api/insumos")
 def crear_insumo():
     requiere_dueno()
@@ -40,20 +34,6 @@ def modificar_insumo(id_insumo: int):
 def eliminar_insumo(id_insumo: int):
     requiere_dueno()
     return respuesta(insumos.eliminar(id_insumo))
-
-
-@insumos_bp.patch("/api/insumos/<int:id_insumo>/ajuste")
-def ajustar_stock(id_insumo: int):
-    """Corrige el stock tras un recuento, dejando el ajuste asentado."""
-    requiere_dueno()
-    return respuesta(insumos.ajustar(id_insumo, cuerpo_json()))
-
-
-@insumos_bp.get("/api/insumos/<int:id_insumo>/movimientos")
-def movimientos_insumo(id_insumo: int):
-    """Historial de entradas y salidas del material."""
-    requiere_dueno()
-    return respuesta(insumos.movimientos(id_insumo))
 
 
 @insumos_bp.get("/api/pedidos/<int:id_pedido>/insumos")

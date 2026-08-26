@@ -1,6 +1,6 @@
 from flask import Blueprint
 
-from rutas.comunes import cuerpo_json, requiere_dueno, respuesta
+from rutas.comunes import requiere_dueno, respuesta
 from servicios import compras
 
 compras_bp = Blueprint("compras", __name__, url_prefix="/api/listas-compra")
@@ -28,16 +28,3 @@ def obtener_lista(id_lista: int):
 def generar_lista():
     requiere_dueno()
     return respuesta(compras.generar(), 201)
-
-
-@compras_bp.patch("/<int:id_lista>/recepcion")
-def recibir_lista(id_lista: int):
-    """Da la compra por recibida y hace entrar el material a bodega."""
-    requiere_dueno()
-    return respuesta(compras.recibir(id_lista, cuerpo_json()))
-
-
-@compras_bp.patch("/<int:id_lista>/anulacion")
-def anular_lista(id_lista: int):
-    requiere_dueno()
-    return respuesta(compras.anular(id_lista))

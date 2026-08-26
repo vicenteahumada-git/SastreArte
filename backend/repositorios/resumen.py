@@ -15,18 +15,8 @@ def obtener() -> dict:
                    (SELECT COUNT(*) FROM cliente) AS clientes,
                    (SELECT COUNT(*) FROM usuario
                     WHERE tipo_usuario = 'TRABAJADOR' AND estado_usuario = 'ACTIVO') AS trabajadores_activos,
-                   -- Materiales que hay que salir a comprar: los que el
-                   -- taller no alcanza a cubrir con lo que tiene en bodega.
-                   (SELECT COUNT(*) FROM (
-                        SELECT di.id_insumo
-                        FROM detalle_insumo di
-                        JOIN pedido p ON p.id_pedido = di.id_pedido
-                        JOIN vista_insumos vi ON vi.id_insumo = di.id_insumo
-                        WHERE di.estado_insumo = 'REQUERIDO'
-                          AND p.estado NOT IN ('ENTREGADO', 'CANCELADO')
-                        GROUP BY di.id_insumo, vi.stock_actual
-                        HAVING SUM(di.cantidad) > vi.stock_actual
-                    ) faltantes) AS insumos_pendientes"""
+                   (SELECT COUNT(*) FROM detalle_insumo
+                    WHERE estado_insumo = 'PENDIENTE_COMPRA') AS insumos_pendientes"""
         ).fetchone()
         estados = conn.execute(
             """SELECT estado, COUNT(*) AS cantidad
