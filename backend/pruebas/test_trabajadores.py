@@ -210,3 +210,24 @@ def test_no_se_elimina_dos_veces(cliente_api, crear_trabajador):
     trabajador = crear_trabajador()
     cliente_api.delete(f"{RUTA}/{trabajador['id_usuario']}")
     assert cliente_api.delete(f"{RUTA}/{trabajador['id_usuario']}").status_code == 409
+
+
+def test_una_clave_guardada_en_claro_no_autentica(cliente_api, crear_trabajador):
+    """Regresión: cuentas creadas cuando el login comparaba texto plano.
+
+    En esas filas `contrasena_hash` guarda la clave tal cual. Verificar
+    contra eso tiene que fallar sin reventar: la comparación con un resumen
+    mal formado devuelve False, no una excepción, así que la API responde
+    401 y no 500. Se arreglan reescribiendo la fila con un hash de verdad.
+    """
+    from configuracion.base_datos import conexion
+
+    trabajador = crear_trabajador()
+    with conexion() as conn:
+        conn.execute(
+            "UPDATE usuario SET contrasena_hash = '12345' WHERE id_usuario = %s",
+            (trabajador["id_usuario"],),
+        )
+
+    respuesta = _entrar(cliente_api, trabajador["nombre_usuario"], "12345")
+    assert respuesta.status_code == 401
