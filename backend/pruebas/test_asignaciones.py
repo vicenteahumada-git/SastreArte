@@ -64,7 +64,7 @@ def test_permite_quitar_la_asignacion(cliente_api, crear_pedido, crear_trabajado
 def test_no_asigna_trabajador_inactivo(cliente_api, crear_pedido, crear_trabajador):
     pedido = crear_pedido()
     trabajador = crear_trabajador()
-    cliente_api.patch(f"/api/trabajadores/{trabajador['id_usuario']}/baja")
+    cliente_api.delete(f"/api/trabajadores/{trabajador['id_usuario']}")
     respuesta = cliente_api.post(
         f"/api/pedidos/{pedido['id_pedido']}/asignacion",
         json={"id_trabajador": trabajador["id_usuario"]},

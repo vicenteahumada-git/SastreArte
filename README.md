@@ -204,18 +204,28 @@ vuelta atrás, para bases que alcanzaron a migrarse.
 
 ### Credenciales de acceso
 
-`usuario` tiene `nombre_usuario` y `contrasena_hash`, ambos opcionales: no
-todo trabajador entra al sistema, y exigir credenciales obligaría a inventarle
-un acceso a cada uno. Un `CHECK` impide dejarlas a medias —o están las dos o
-no está ninguna— y el nombre de usuario es único en toda la tabla.
+Cada trabajador es también una cuenta: darlo de alta y crearle el acceso son
+la misma operación, porque un trabajador que no puede entrar al sistema no
+sirve de mucho. `usuario` guarda `nombre_usuario` y `contrasena_hash`, únicos
+y con un `CHECK` que impide dejarlos a medias.
 
-La contraseña **nunca** se guarda en claro. Lo que va a la base es el resumen
-con sal que produce `backend/servicios/credenciales.py` mediante Werkzeug, que
-ya viene con Flask. El hash no se selecciona en ninguna consulta que alimente
-una respuesta de la API.
+La contraseña **nunca** se guarda ni se compara en claro. Lo que va a la base
+es el resumen con sal que produce `backend/servicios/credenciales.py` mediante
+Werkzeug, que ya viene con Flask, y `servicios/sesion.py` verifica contra ese
+resumen. El hash no se selecciona en ninguna consulta que alimente una
+respuesta de la API.
 
-Por ahora es sólo el modelo de datos: todavía no hay pantalla de inicio de
-sesión ni rutas protegidas, y el rol se sigue eligiendo en el encabezado.
+Al modificar un trabajador, la contraseña en blanco conserva la que tenía:
+editar un teléfono no puede obligar a inventarle una clave nueva a la persona.
+El nombre de usuario sí puede cambiarse por separado.
+
+Eliminar a un trabajador es una **baja lógica**: sale del taller pero la fila
+queda, para que los pedidos que hizo conserven quién los hizo. Se impide si
+todavía tiene pedidos sin entregar, indicando cuántos son; los ya entregados
+o cancelados no bloquean.
+
+La dueña queda fuera de esta pantalla: `GET /api/trabajadores` filtra por
+`tipo_usuario = 'TRABAJADOR'`, así que su cuenta sólo se administra por SQL.
 
 ## Alcance implementado
 
@@ -236,7 +246,9 @@ sesión ni rutas protegidas, y el rol se sigue eligiendo en el encabezado.
 - Crear, modificar y eliminar insumos con unidad de medida acotada; asociarlos
   a pedidos y cambiar su estado.
 - Consultar pendientes y generar listas de compra con el modelo SQL existente.
-- Crear y modificar trabajadores; la baja cambia su estado a `INACTIVO`.
+- Agregar trabajadores junto con su cuenta de acceso —nombre, apellido,
+  teléfono, nombre de usuario y contraseña—, modificarlos, y eliminarlos con
+  baja lógica si no tienen pedidos pendientes.
 - Cambiar entre vista de Dueña y vista de Taller sin autenticación.
 
 No se implementan login, `Prenda`, `DetallePedido`, historial de asignaciones, movimientos históricos de stock ni `detalle_lista_compra`.

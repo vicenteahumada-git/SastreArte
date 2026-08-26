@@ -1,7 +1,14 @@
-"""Servicio de inicio de sesión — contraseña en texto plano (demo local)."""
+"""Servicio de inicio de sesión.
+
+La contraseña nunca se compara en claro: lo que hay guardado es el resumen
+con sal que produce servicios/credenciales.py, y la verificación se delega
+ahí. Es también lo que permite que una cuenta creada desde la pantalla de
+trabajadores pueda entrar: esa pantalla guarda el hash, no el texto.
+"""
 
 from configuracion.base_datos import conexion
 from configuracion.errores import ErrorDominio
+from servicios import credenciales
 
 
 def iniciar(datos: dict) -> dict:
@@ -21,7 +28,9 @@ def iniciar(datos: dict) -> dict:
             (nombre_usr,),
         ).fetchone()
 
-    if not fila or fila["contrasena_hash"] != clave:
+    # Un solo mensaje para usuario inexistente y clave equivocada: decir cuál
+    # de los dos falló le confirmaría a un desconocido qué usuarios existen.
+    if not fila or not credenciales.coincide(clave, fila["contrasena_hash"]):
         raise ErrorDominio("Usuario o contraseña incorrectos.", 401)
 
     if fila["estado_usuario"] != "ACTIVO":

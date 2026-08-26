@@ -28,7 +28,13 @@ def modificar_trabajador(id_trabajador: int):
     return respuesta(trabajadores.modificar(id_trabajador, cuerpo_json()))
 
 
-@trabajadores_bp.patch("/<int:id_trabajador>/baja")
-def dar_baja_trabajador(id_trabajador: int):
+@trabajadores_bp.delete("/<int:id_trabajador>")
+def eliminar_trabajador(id_trabajador: int):
+    """Saca al trabajador del taller.
+
+    Es DELETE por lo que significa para quien usa la API —la persona deja de
+    estar disponible—, aunque por dentro sea una baja lógica: los pedidos que
+    hizo conservan quién los hizo.
+    """
     requiere_dueno()
-    return respuesta(trabajadores.dar_baja(id_trabajador))
+    return respuesta(trabajadores.eliminar(id_trabajador))

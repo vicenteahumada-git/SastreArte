@@ -71,6 +71,8 @@ export interface Trabajador {
   nombre: string
   apellido: string | null
   telefono: string | null
+  /** Su cuenta de acceso. La contraseña no se expone nunca. */
+  nombre_usuario: string | null
   estado_usuario: 'ACTIVO' | 'INACTIVO'
   tipo_usuario: 'TRABAJADOR'
 }

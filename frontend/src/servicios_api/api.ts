@@ -102,8 +102,10 @@ export const api = {
     solicitud<Trabajador>('/trabajadores', json('POST', datos)),
   modificarTrabajador: (id: number, datos: Record<string, unknown>) =>
     solicitud<Trabajador>(`/trabajadores/${id}`, json('PUT', datos)),
-  darBajaTrabajador: (id: number) =>
-    solicitud<Trabajador>(`/trabajadores/${id}/baja`, json('PATCH')),
+  // Baja lógica: el trabajador sale del taller pero sus pedidos conservan
+  // quién los hizo. Se expone como DELETE porque es lo que significa afuera.
+  eliminarTrabajador: (id: number) =>
+    solicitud<Trabajador>(`/trabajadores/${id}`, json('DELETE')),
 
   insumos: () => solicitud<Insumo[]>('/insumos'),
   crearInsumo: (datos: Record<string, unknown>) =>

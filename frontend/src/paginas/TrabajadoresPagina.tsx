@@ -19,27 +19,44 @@ export function TrabajadoresPagina({ notificar }: { notificar: (texto: string) =
   }
   useEffect(() => { void cargar() }, [])
 
+  const esNuevo = editando === 'nuevo'
+
   const guardar = async (evento: FormEvent<HTMLFormElement>) => {
     evento.preventDefault()
     const form = new FormData(evento.currentTarget)
-    const datos = { nombre: String(form.get('nombre')), apellido: String(form.get('apellido')), telefono: String(form.get('telefono')) }
+    const datos: Record<string, unknown> = {
+      nombre: String(form.get('nombre')),
+      apellido: String(form.get('apellido')),
+      telefono: String(form.get('telefono')),
+      nombre_usuario: String(form.get('nombre_usuario')),
+    }
+    // Al modificar, la contraseña en blanco conserva la que tenía: no se
+    // manda el campo vacío para que el backend no lo tome como un cambio.
+    const clave = String(form.get('contrasena') || '')
+    if (clave) datos.contrasena = clave
+
     try {
-      if (editando === 'nuevo') await api.crearTrabajador(datos)
+      if (esNuevo) await api.crearTrabajador(datos)
       else if (editando) await api.modificarTrabajador(editando.id_usuario, datos)
-      setEditando(null); notificar(editando === 'nuevo' ? 'Trabajador incorporado al taller.' : 'Ficha del trabajador actualizada.'); await cargar()
+      setEditando(null)
+      notificar(esNuevo ? 'Trabajador agregado con su cuenta.' : 'Trabajador actualizado.')
+      await cargar()
     } catch (e) { setError((e as Error).message) }
   }
 
-  const darBaja = async (trabajador: Trabajador) => {
-    if (!window.confirm(`¿Dar de baja a ${trabajador.nombre}? Sus pedidos anteriores se conservarán.`)) return
-    try { await api.darBajaTrabajador(trabajador.id_usuario); notificar('Trabajador marcado como inactivo.'); await cargar() }
-    catch (e) { setError((e as Error).message) }
+  const eliminar = async (trabajador: Trabajador) => {
+    if (!window.confirm(`¿Eliminar a ${trabajador.nombre}?\n\nDejará de aparecer en el taller, pero los pedidos que hizo conservan su nombre.`)) return
+    try {
+      await api.eliminarTrabajador(trabajador.id_usuario)
+      notificar('Trabajador eliminado del taller.')
+      await cargar()
+    } catch (e) { setError((e as Error).message) }
   }
 
   return (
     <div className="pagina">
       <section className="barra-herramientas barra-herramientas--derecha">
-        <button className="boton boton--primario" onClick={() => setEditando('nuevo')}><Icono nombre="mas" /> Alta de trabajador</button>
+        <button className="boton boton--primario" onClick={() => setEditando('nuevo')}><Icono nombre="mas" /> Agregar trabajador</button>
       </section>
       {error && <p className="aviso aviso--error">{error}</p>}
       {cargando ? <Cargando /> : trabajadores.length === 0 ? (
@@ -51,18 +68,31 @@ export function TrabajadoresPagina({ notificar }: { notificar: (texto: string) =
               <div className="ficha-trabajador__cabecera"><span className="avatar-grande">{trabajador.nombre.charAt(0)}{trabajador.apellido?.charAt(0)}</span><span className={`insignia ${trabajador.estado_usuario === 'ACTIVO' ? 'insignia--verde' : 'insignia--gris'}`}>{trabajador.estado_usuario.toLowerCase()}</span></div>
               <h2>{trabajador.nombre} {trabajador.apellido}</h2>
               <p>{trabajador.telefono || 'Sin teléfono registrado'}</p>
-              <div className="ficha-trabajador__acciones"><button className="boton-texto" onClick={() => setEditando(trabajador)}><Icono nombre="editar" tamano={17} /> Editar</button>{trabajador.estado_usuario === 'ACTIVO' && <button className="boton-texto boton-texto--peligro" onClick={() => darBaja(trabajador)}>Dar de baja</button>}</div>
+              {trabajador.nombre_usuario && <p className="texto-tenue">Usuario: {trabajador.nombre_usuario}</p>}
+              <div className="ficha-trabajador__acciones"><button className="boton-texto" onClick={() => setEditando(trabajador)}><Icono nombre="editar" tamano={17} /> Editar</button>{trabajador.estado_usuario === 'ACTIVO' && <button className="boton-texto boton-texto--peligro" onClick={() => eliminar(trabajador)}>Eliminar</button>}</div>
             </article>
           ))}
         </section>
       )}
       {editando && (
-        <Modal titulo={editando === 'nuevo' ? 'Alta de trabajador' : 'Modificar trabajador'} subtitulo="La baja conserva todas sus asignaciones históricas." cerrar={() => setEditando(null)}>
+        <Modal
+          titulo={esNuevo ? 'Agregar trabajador' : 'Modificar trabajador'}
+          subtitulo={esNuevo
+            ? 'Con estos datos se crea su cuenta para entrar al sistema.'
+            : 'Deja la contraseña en blanco para conservar la actual.'}
+          cerrar={() => setEditando(null)}
+        >
           <form className="formulario" onSubmit={guardar}>
-            <Campo etiqueta="Nombre"><input name="nombre" required defaultValue={editando === 'nuevo' ? '' : editando.nombre} autoFocus /></Campo>
-            <Campo etiqueta="Apellido"><input name="apellido" defaultValue={editando === 'nuevo' ? '' : editando.apellido ?? ''} /></Campo>
-            <Campo etiqueta="Teléfono" ancho="campo--completo"><input name="telefono" defaultValue={editando === 'nuevo' ? '' : editando.telefono ?? ''} placeholder="+56 9 1234 5678" /></Campo>
-            <div className="acciones-formulario"><button type="button" className="boton boton--suave" onClick={() => setEditando(null)}>Cancelar</button><button className="boton boton--primario">Guardar ficha</button></div>
+            <Campo etiqueta="Nombre"><input name="nombre" required defaultValue={esNuevo ? '' : editando.nombre} autoFocus /></Campo>
+            <Campo etiqueta="Apellido"><input name="apellido" defaultValue={esNuevo ? '' : editando.apellido ?? ''} /></Campo>
+            <Campo etiqueta="Teléfono" ancho="campo--completo"><input name="telefono" defaultValue={esNuevo ? '' : editando.telefono ?? ''} placeholder="+56 9 1234 5678" /></Campo>
+            <Campo etiqueta="Nombre de usuario" ayuda="Minúsculas, números, punto, guion o guion bajo.">
+              <input name="nombre_usuario" required minLength={3} maxLength={50} pattern="[a-z0-9._-]{3,50}" defaultValue={esNuevo ? '' : editando.nombre_usuario ?? ''} placeholder="marta.silva" />
+            </Campo>
+            <Campo etiqueta="Contraseña" ayuda={esNuevo ? 'Al menos 8 caracteres.' : 'Solo si quieres cambiarla.'}>
+              <input name="contrasena" type="password" required={esNuevo} minLength={8} maxLength={128} autoComplete="new-password" placeholder={esNuevo ? '' : '••••••••'} />
+            </Campo>
+            <div className="acciones-formulario"><button type="button" className="boton boton--suave" onClick={() => setEditando(null)}>Cancelar</button><button className="boton boton--primario">{esNuevo ? 'Agregar trabajador' : 'Guardar cambios'}</button></div>
           </form>
         </Modal>
       )}

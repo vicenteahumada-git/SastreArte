@@ -92,14 +92,36 @@ def crear_pedido(cliente_api, crear_cliente):
     return fabrica
 
 
+# Contraseña de los trabajadores de prueba. Alta y cuenta son la misma
+# operación, así que la fábrica tiene que crear las credenciales.
+CLAVE_PRUEBA = "sastrearte2026"
+
+
 @pytest.fixture()
 def crear_trabajador(cliente_api):
-    def fabrica(nombre="Mario", apellido="Soto", telefono="+56 9 3344 5566"):
+    def fabrica(
+        nombre="Mario",
+        apellido="Soto",
+        telefono="+56 9 3344 5566",
+        usuario=None,
+        contrasena=CLAVE_PRUEBA,
+    ):
+        # El usuario sale del nombre si no se indica, para que dos altas
+        # seguidas no choquen contra la unicidad.
+        if usuario is None:
+            usuario = f"{nombre}.{apellido or 'x'}".lower().replace(" ", "")
+            usuario = "".join(c for c in usuario if c.isascii() and (c.isalnum() or c in "._-"))
         respuesta = cliente_api.post(
             "/api/trabajadores",
-            json={"nombre": nombre, "apellido": apellido, "telefono": telefono},
+            json={
+                "nombre": nombre,
+                "apellido": apellido,
+                "telefono": telefono,
+                "nombre_usuario": usuario,
+                "contrasena": contrasena,
+            },
         )
-        assert respuesta.status_code == 201
+        assert respuesta.status_code == 201, respuesta.get_json()
         return respuesta.get_json()["datos"]
 
     return fabrica

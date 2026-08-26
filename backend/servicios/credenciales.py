@@ -66,12 +66,15 @@ def coincide(clave: str, resumen: str | None) -> bool:
     return check_password_hash(resumen, clave)
 
 
-def desde_datos(datos: dict) -> tuple[str, str] | None:
-    """Extrae usuario y hash de un cuerpo JSON, si trae credenciales.
+def desde_datos(datos: dict, obligatorias: bool = False) -> tuple[str, str] | None:
+    """Extrae usuario y hash de un cuerpo JSON.
 
-    Devuelve None cuando no viene ninguna de las dos, que es el caso normal
-    de un trabajador que no entra al sistema. Si viene sólo una, es un error:
-    la base no acepta credenciales a medias.
+    Con `obligatorias` las dos tienen que venir: es el caso del alta, donde
+    crear el trabajador es crear su cuenta.
+
+    Sin ella devuelve None cuando no viene ninguna, que es lo que permite
+    editar el teléfono de alguien sin obligar a reescribir su contraseña.
+    Si viene sólo una, es un error: la base no acepta credenciales a medias.
     """
     usuario_crudo = datos.get("nombre_usuario")
     clave_cruda = datos.get("contrasena")
@@ -79,9 +82,21 @@ def desde_datos(datos: dict) -> tuple[str, str] | None:
     hay_clave = isinstance(clave_cruda, str) and clave_cruda
 
     if not hay_usuario and not hay_clave:
+        if obligatorias:
+            raise ErrorDominio(
+                "El nombre de usuario y la contraseña son obligatorios."
+            )
         return None
     if not hay_usuario or not hay_clave:
         raise ErrorDominio(
             "Para dar acceso hay que indicar el nombre de usuario y la contraseña."
         )
     return nombre_usuario(datos), resumir(contrasena(datos))
+
+
+def solo_usuario(datos: dict) -> str | None:
+    """Nombre de usuario nuevo cuando se edita sin cambiar la contraseña."""
+    valor = datos.get("nombre_usuario")
+    if not isinstance(valor, str) or not valor.strip():
+        return None
+    return nombre_usuario(datos)

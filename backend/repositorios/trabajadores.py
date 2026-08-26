@@ -84,17 +84,23 @@ def modificar(
     apellido: str | None,
     telefono: str | None,
     credenciales: tuple[str, str] | None = None,
+    nombre_usuario: str | None = None,
 ) -> dict | None:
-    """Actualiza los datos; las credenciales sólo si vienen nuevas.
+    """Actualiza los datos del trabajador.
 
-    Sin `credenciales` el acceso queda como estaba: editar el teléfono de
-    alguien no puede tener el efecto lateral de borrarle la contraseña.
+    Con `credenciales` cambia usuario y contraseña. Con `nombre_usuario` sólo
+    el usuario, dejando la contraseña como estaba: editar el teléfono de
+    alguien no puede tener el efecto lateral de borrarle el acceso.
     """
-    if credenciales is None:
-        asignaciones, extra = "", []
-    else:
+    if credenciales is not None:
         asignaciones = ", nombre_usuario = %s, contrasena_hash = %s"
         extra = list(credenciales)
+    elif nombre_usuario is not None:
+        asignaciones = ", nombre_usuario = %s"
+        extra = [nombre_usuario]
+    else:
+        asignaciones, extra = "", []
+
     with conexion() as conn:
         return conn.execute(
             f"""UPDATE usuario
@@ -103,6 +109,19 @@ def modificar(
                RETURNING {DEVUELVE}""",
             [nombre, apellido, telefono, *extra, id_trabajador],
         ).fetchone()
+
+
+def contar_pedidos_asignados(id_trabajador: int) -> int:
+    """Pedidos que todavía tiene encima, sin contar los ya cerrados."""
+    with conexion() as conn:
+        return conn.execute(
+            """SELECT COUNT(*) AS total
+               FROM asignacion a
+               JOIN pedido p ON p.id_pedido = a.id_pedido
+               WHERE a.id_trabajador = %s
+                 AND p.estado NOT IN ('ENTREGADO', 'CANCELADO')""",
+            (id_trabajador,),
+        ).fetchone()["total"]
 
 
 def dar_baja(id_trabajador: int) -> dict | None:

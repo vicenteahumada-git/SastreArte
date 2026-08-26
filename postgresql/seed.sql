@@ -1,16 +1,19 @@
 -- Datos acotados para recorrer los flujos del sistema.
 
--- Usuarios de prueba con contraseñas en texto plano (demo local).
--- En producción nunca se guardan así.
+-- Los tres primeros tienen acceso; la contraseña de los tres es
+-- 'sastrearte2026', guardada como hash scrypt con sal. Son datos de prueba:
+-- en una instalación real esas claves se cambian.
+-- Julián queda sin credenciales a propósito, para dejar a la vista que un
+-- trabajador puede existir sin entrar al sistema.
 INSERT INTO usuario (nombre, apellido, telefono, nombre_usuario, contrasena_hash, estado_usuario, tipo_usuario) VALUES
     ('Elena', 'Rojas', '+56 9 6111 2200', 'elena',
-     'sastrearte2026',
+     'scrypt:32768:8:1$FFeBKdrdzswiB5DM$1d078a18b2896483772017b0e36903a1e16c5ab458d5c4fd8695d909b02852f582d6e31adc6446ffac9afaad3fd349ab77000ab9630c5e6890d51a7509344161',
      'ACTIVO', 'DUENO'),
     ('Tomás', 'Vega', '+56 9 7222 3300', 'tomas',
-     'sastrearte2026',
+     'scrypt:32768:8:1$X5nALqJPNUVaRVTR$271f57169619b7b2c36dd181f701c6b1d168a043afa45ea5a554d6634c725899cc8b021099778be183c1d542e9f9d56a2ba45d458b8a9ae5a3a6def5b588898e',
      'ACTIVO', 'TRABAJADOR'),
     ('Marta', 'Silva', '+56 9 8333 4400', 'marta',
-     'sastrearte2026',
+     'scrypt:32768:8:1$AvBvO8uwPJiCciCk$93b6375a349d3a42ad0c18ca835270230c0781a059cc975997bda0482228c07bf1096aaff792b57840b10ebfeacb0153eb952699255438967b8bb97f30d8c874',
      'ACTIVO', 'TRABAJADOR'),
     ('Julián', 'Pérez', '+56 9 9444 5500', NULL, NULL, 'INACTIVO', 'TRABAJADOR');
 
