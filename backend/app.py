@@ -1,13 +1,19 @@
 import os
 from datetime import date, datetime, timedelta
 from decimal import Decimal
+from pathlib import Path
 
 import psycopg
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request, send_from_directory
 from flask.json.provider import DefaultJSONProvider
 from flask_cors import CORS
+from werkzeug.exceptions import HTTPException, NotFound
+from werkzeug.security import safe_join
 
 from configuracion.errores import ErrorDominio
+
+# Frontend ya compilado. Sólo existe en despliegue: en desarrollo lo sirve Vite.
+FRONTEND = Path(__file__).resolve().parents[1] / "frontend" / "dist"
 
 
 def origenes_permitidos() -> list[str]:
@@ -61,6 +67,8 @@ def crear_aplicacion() -> Flask:
     def salud():
         return jsonify({"datos": {"estado": "ok", "servicio": "SastreArte API"}})
 
+    _registrar_frontend(aplicacion)
+
     @aplicacion.errorhandler(ErrorDominio)
     def error_dominio(error: ErrorDominio):
         contenido = {"error": error.mensaje}
@@ -80,7 +88,44 @@ def crear_aplicacion() -> Flask:
     def error_restriccion(_error):
         return jsonify({"error": "Los datos no cumplen las reglas del sistema."}), 400
 
+    @aplicacion.errorhandler(HTTPException)
+    def error_http(error: HTTPException):
+        """La API contesta siempre en JSON, incluso al fallar la ruta.
+
+        Sin esto, una ruta inexistente bajo /api devolvía la página HTML por
+        defecto de Flask y el cliente reventaba al interpretarla como JSON.
+        """
+        if request.path.startswith("/api/"):
+            return jsonify({"error": error.description}), error.code
+        return error
+
     return aplicacion
+
+
+def _registrar_frontend(aplicacion: Flask) -> None:
+    """Sirve el frontend compilado desde el mismo origen que la API.
+
+    Sólo se activa si existe frontend/dist, es decir en un despliegue de un
+    único servicio. En desarrollo el frontend lo sirve Vite con su proxy.
+    """
+    if not FRONTEND.is_dir():
+        return
+
+    @aplicacion.get("/", defaults={"ruta": ""})
+    @aplicacion.get("/<path:ruta>")
+    def frontend(ruta: str):
+        # Las rutas de API desconocidas deben responder 404 en JSON y no la
+        # portada de la aplicación.
+        if ruta.startswith("api/"):
+            raise NotFound
+
+        # safe_join descarta cualquier intento de salir del directorio.
+        destino = safe_join(str(FRONTEND), ruta) if ruta else None
+        if destino and Path(destino).is_file():
+            return send_from_directory(FRONTEND, ruta)
+
+        # El resto son rutas del enrutador del cliente: va la portada.
+        return send_from_directory(FRONTEND, "index.html")
 
 
 app = crear_aplicacion()
