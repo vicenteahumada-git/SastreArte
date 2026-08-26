@@ -2,10 +2,25 @@ from configuracion.base_datos import conexion
 
 
 def pendientes() -> list[dict]:
+    """Lo que falta comprar, descontando lo que ya hay en bodega.
+
+    Dos cuentas separadas a propósito:
+
+    - `cantidad_total` es lo que todavía no entró en ninguna lista. Antes se
+      sumaba todo lo pendiente, incluso lo ya listado, y el número quedaba
+      inflado respecto de lo que iba a entrar en la lista siguiente.
+    - `cantidad_a_comprar` le resta el stock disponible, porque pedir que se
+      compre algo que está en el estante es el error más caro de los dos.
+    """
     with conexion() as conn:
         return conn.execute(
-            """SELECT i.id_insumo, i.nombre, i.unidad_medida,
-                      SUM(di.cantidad) AS cantidad_total,
+            """SELECT i.id_insumo, i.nombre, i.unidad_medida, i.stock_actual,
+                      SUM(di.cantidad) FILTER (WHERE di.id_lista_compra IS NULL)
+                          AS cantidad_total,
+                      GREATEST(
+                          COALESCE(SUM(di.cantidad) FILTER (WHERE di.id_lista_compra IS NULL), 0)
+                          - i.stock_actual, 0
+                      ) AS cantidad_a_comprar,
                       COUNT(DISTINCT di.id_pedido) AS cantidad_pedidos,
                       STRING_AGG(DISTINCT p.id_pedido::text, ', ' ORDER BY p.id_pedido::text) AS pedidos,
                       BOOL_OR(di.id_lista_compra IS NULL) AS disponible_para_nueva_lista
@@ -13,7 +28,7 @@ def pendientes() -> list[dict]:
                JOIN insumo i ON i.id_insumo = di.id_insumo
                JOIN pedido p ON p.id_pedido = di.id_pedido
                WHERE di.estado_insumo = 'PENDIENTE_COMPRA'
-               GROUP BY i.id_insumo, i.nombre, i.unidad_medida
+               GROUP BY i.id_insumo, i.nombre, i.unidad_medida, i.stock_actual
                ORDER BY i.nombre"""
         ).fetchall()
 

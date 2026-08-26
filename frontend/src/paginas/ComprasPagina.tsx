@@ -41,7 +41,7 @@ export function ComprasPagina({ notificar }: { notificar: (texto: string) => voi
         <section className="panel pendientes-compra">
           <header className="panel__cabecera"><div><span className="sobretitulo">Materiales faltantes</span><h2>Pendientes de compra</h2></div><button className="boton boton--primario" disabled={!sePuedeGenerar} onClick={generar}><Icono nombre="compras" /> Generar lista</button></header>
           {pendientes.length === 0 ? <EstadoVacio titulo="No faltan materiales" texto="Todos los insumos asociados están marcados como comprados." /> : (
-            <div className="lista-pendientes">{pendientes.map((item) => <article key={item.id_insumo}><span className="casilla-compra" /><div><strong>{item.nombre}</strong><small>Guías {item.pedidos}</small></div><b>{item.cantidad_total} {unidad(item.unidad_medida)}</b>{!item.disponible_para_nueva_lista && <span className="insignia insignia--gris">ya listada</span>}</article>)}</div>
+            <div className="lista-pendientes">{pendientes.map((item) => <article key={item.id_insumo}><span className="casilla-compra" /><div><strong>{item.nombre}</strong><small>Guías {item.pedidos}{item.stock_actual > 0 && ` · ${item.stock_actual} ${unidad(item.unidad_medida)} en bodega`}</small></div><b>{item.cantidad_a_comprar} {unidad(item.unidad_medida)}</b>{item.cantidad_a_comprar === 0 && <span className="insignia insignia--gris">hay en bodega</span>}{!item.disponible_para_nueva_lista && <span className="insignia insignia--gris">ya listada</span>}</article>)}</div>
           )}
         </section>
         <aside className="historial-listas">

@@ -129,7 +129,11 @@ export interface PendienteCompra {
   id_insumo: number
   nombre: string
   unidad_medida: UnidadMedida
+  stock_actual: number
+  /** Lo requerido que todavía no entró en ninguna lista. */
   cantidad_total: number
+  /** Lo anterior menos el stock disponible: lo que hay que salir a comprar. */
+  cantidad_a_comprar: number
   cantidad_pedidos: number
   pedidos: string
   disponible_para_nueva_lista: boolean
