@@ -16,7 +16,7 @@ export function ClientesPagina({
   const [buscar, setBuscar] = useState('')
   const [cargando, setCargando] = useState(true)
   // null = cerrado, 'nuevo' = alta, un cliente = edición.
-  const [ficha, setFicha] = useState<Cliente | 'nuevo' | null>(null)
+  const [formulario, setFormulario] = useState<Cliente | 'nuevo' | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [borrando, setBorrando] = useState(0)
   const [error, setError] = useState('')
@@ -35,7 +35,7 @@ export function ClientesPagina({
     void cargar(buscar)
   }
 
-  const editando = ficha !== null && ficha !== 'nuevo' ? ficha : null
+  const editando = formulario !== null && formulario !== 'nuevo' ? formulario : null
 
   const guardar = async (evento: FormEvent<HTMLFormElement>) => {
     evento.preventDefault()
@@ -49,12 +49,12 @@ export function ClientesPagina({
     try {
       if (editando) {
         await api.modificarCliente(editando.id_cliente, cliente)
-        notificar('Ficha del cliente actualizada.')
+        notificar('Cliente actualizado.')
       } else {
         await api.crearCliente(cliente)
         notificar('Cliente registrado en la libreta.')
       }
-      setFicha(null)
+      setFormulario(null)
       await cargar(buscar)
     } catch (e) {
       setError((e as Error).message)
@@ -88,25 +88,24 @@ export function ClientesPagina({
           <input value={buscar} onChange={(e) => setBuscar(e.target.value)} placeholder="Buscar por nombre o teléfono" aria-label="Buscar clientes" />
           <button>Buscar</button>
         </form>
-        <button className="boton boton--primario" onClick={() => setFicha('nuevo')}><Icono nombre="mas" /> Registrar cliente</button>
+        <button className="boton boton--primario" onClick={() => setFormulario('nuevo')}><Icono nombre="mas" /> Registrar cliente</button>
       </section>
 
       {error && <p className="aviso aviso--error">{error}</p>}
       {cargando ? <Cargando /> : clientes.length === 0 ? (
-        <EstadoVacio titulo="No encontramos clientes" texto="Prueba otra búsqueda o registra una nueva persona." accion={<button className="boton boton--primario" onClick={() => setFicha('nuevo')}>Registrar cliente</button>} />
+        <EstadoVacio titulo="No encontramos clientes" texto="Prueba otra búsqueda o registra una nueva persona." accion={<button className="boton boton--primario" onClick={() => setFormulario('nuevo')}>Registrar cliente</button>} />
       ) : (
         <section className="panel papel-costura tabla-contenedor">
           <header className="panel__cabecera"><div><span className="sobretitulo">Libreta de medidas</span><h2>{clientes.length} clientes</h2></div></header>
           <table className="tabla">
-            <thead><tr><th>Cliente</th><th>Teléfono</th><th>Ficha</th><th /></tr></thead>
+            <thead><tr><th>Cliente</th><th>Teléfono</th><th /></tr></thead>
             <tbody>{clientes.map((cliente) => (
               <tr key={cliente.id_cliente}>
                 <td><span className="avatar-letra">{cliente.nombre.charAt(0)}</span><strong>{cliente.nombre}</strong></td>
                 <td><a href={`tel:${cliente.telefono}`}>{cliente.telefono}</a></td>
-                <td><span className="numero-ficha">C-{String(cliente.id_cliente).padStart(4, '0')}</span></td>
                 <td>
                   <div className="acciones-fila">
-                    <button className="boton-icono" onClick={() => setFicha(cliente)} aria-label={`Modificar a ${cliente.nombre}`} title="Modificar">
+                    <button className="boton-icono" onClick={() => setFormulario(cliente)} aria-label={`Modificar a ${cliente.nombre}`} title="Modificar">
                       <Icono nombre="editar" />
                     </button>
                     {puedeEliminar && (
@@ -128,11 +127,11 @@ export function ClientesPagina({
         </section>
       )}
 
-      {ficha && (
+      {formulario && (
         <Modal
           titulo={editando ? 'Modificar cliente' : 'Registrar cliente'}
-          subtitulo={editando ? `Ficha C-${String(editando.id_cliente).padStart(4, '0')}` : 'Datos de contacto para asociar sus pedidos.'}
-          cerrar={() => setFicha(null)}
+          subtitulo="Datos de contacto para asociar sus pedidos."
+          cerrar={() => setFormulario(null)}
         >
           <form className="formulario" onSubmit={guardar}>
             <Campo etiqueta="Nombre completo" ancho="campo--completo">
@@ -142,7 +141,7 @@ export function ClientesPagina({
               <input name="telefono" required maxLength={30} defaultValue={editando?.telefono ?? ''} placeholder="+56 9 1234 5678" />
             </Campo>
             <div className="acciones-formulario">
-              <button type="button" className="boton boton--suave" onClick={() => setFicha(null)}>Cancelar</button>
+              <button type="button" className="boton boton--suave" onClick={() => setFormulario(null)}>Cancelar</button>
               <button className="boton boton--primario" disabled={guardando}>
                 {guardando ? 'Guardando…' : editando ? 'Guardar cambios' : 'Guardar cliente'}
               </button>
