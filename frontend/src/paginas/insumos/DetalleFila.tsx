@@ -37,7 +37,7 @@ export function DetalleFila({
 
   if (editando) return (
     <form className="fila-insumo fila-insumo--edicion" onSubmit={guardar}>
-      <div><strong>{detalle.nombre}</strong><small>{unidad(detalle.unidad_medida)}</small></div>
+      <div><strong>{detalle.nombre}</strong><small>{detalle.stock_actual} {unidad(detalle.unidad_medida)} en bodega</small></div>
       <input name="cantidad" type="number" min="0.01" step="0.01" defaultValue={detalle.cantidad} aria-label="Cantidad" />
       <select name="estado_insumo" defaultValue={detalle.estado_insumo}><option>PENDIENTE_COMPRA</option><option>COMPRADO</option></select>
       <div><button className="boton-texto">Guardar</button><button type="button" className="boton-texto" onClick={() => setEditando(false)}>Cancelar</button></div>
@@ -45,9 +45,19 @@ export function DetalleFila({
     </form>
   )
 
+  // Si lo que pide el pedido supera lo que hay, conviene que salte a la
+  // vista: es la diferencia entre poder empezar el encargo o no.
+  const alcanza = Number(detalle.stock_actual) >= Number(detalle.cantidad)
+
   return (
     <article className="fila-insumo">
-      <div><strong>{detalle.nombre}</strong><small>{unidad(detalle.unidad_medida)}</small></div>
+      <div>
+        <strong>{detalle.nombre}</strong>
+        <small className={alcanza ? undefined : 'texto-alerta'}>
+          {detalle.stock_actual} {unidad(detalle.unidad_medida)} en bodega
+          {!alcanza && ' · no alcanza'}
+        </small>
+      </div>
       <b>{detalle.cantidad}</b>
       <span className={`insignia ${detalle.estado_insumo === 'COMPRADO' ? 'insignia--verde' : 'insignia--ambar'}`}>{etiqueta(detalle.estado_insumo)}</span>
       <div><button className="boton-texto" onClick={() => setEditando(true)}>Modificar</button><button className="boton-texto boton-texto--peligro" onClick={quitar}>Eliminar</button></div>

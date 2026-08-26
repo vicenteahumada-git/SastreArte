@@ -73,3 +73,53 @@ def test_elimina_insumo_del_pedido(cliente_api, crear_pedido, crear_insumo):
         f"/api/pedidos/{pedido['id_pedido']}/insumos"
     ).get_json()["datos"] == []
 
+
+
+def test_el_detalle_del_pedido_informa_el_stock(cliente_api, crear_pedido, crear_insumo):
+    """Al mirar lo que necesita un pedido hay que ver si alcanza con lo que hay."""
+    pedido = crear_pedido()
+    insumo = crear_insumo(stock=7)
+    cliente_api.post(
+        f"/api/pedidos/{pedido['id_pedido']}/insumos",
+        json={"id_insumo": insumo["id_insumo"], "cantidad": 2},
+    )
+    detalle = cliente_api.get(
+        f"/api/pedidos/{pedido['id_pedido']}/insumos"
+    ).get_json()["datos"][0]
+    assert detalle["stock_actual"] == 7
+    assert detalle["cantidad"] == 2
+
+
+def test_el_stock_del_detalle_sigue_al_del_catalogo(
+    cliente_api, crear_pedido, crear_insumo
+):
+    pedido = crear_pedido()
+    insumo = crear_insumo(stock=7)
+    cliente_api.post(
+        f"/api/pedidos/{pedido['id_pedido']}/insumos",
+        json={"id_insumo": insumo["id_insumo"], "cantidad": 2},
+    )
+    cliente_api.put(
+        f"/api/insumos/{insumo['id_insumo']}",
+        json={"nombre": insumo["nombre"], "stock_actual": 20, "unidad_medida": "UNIDADES"},
+    )
+    detalle = cliente_api.get(
+        f"/api/pedidos/{pedido['id_pedido']}/insumos"
+    ).get_json()["datos"][0]
+    assert detalle["stock_actual"] == 20
+
+
+def test_modificar_el_detalle_tambien_devuelve_el_stock(
+    cliente_api, crear_pedido, crear_insumo
+):
+    pedido = crear_pedido()
+    insumo = crear_insumo(stock=7)
+    cliente_api.post(
+        f"/api/pedidos/{pedido['id_pedido']}/insumos",
+        json={"id_insumo": insumo["id_insumo"], "cantidad": 2},
+    )
+    actualizado = cliente_api.put(
+        f"/api/pedidos/{pedido['id_pedido']}/insumos/{insumo['id_insumo']}",
+        json={"cantidad": 3, "estado_insumo": "PENDIENTE_COMPRA"},
+    ).get_json()["datos"]
+    assert actualizado["stock_actual"] == 7

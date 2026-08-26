@@ -56,24 +56,31 @@ def eliminar(id_insumo: int) -> bool:
         ).rowcount > 0
 
 
+# Columnas del material asociado a un pedido. Van juntas en un solo lugar
+# para que el listado y la relectura de una fila no se separen con el tiempo.
+# Incluye el stock del catálogo: al mirar lo que necesita un pedido, lo
+# primero que se quiere saber es si alcanza con lo que hay en bodega.
+CAMPOS_DETALLE = """
+    di.id_pedido, di.id_insumo, i.nombre, i.unidad_medida, i.stock_actual,
+    di.cantidad, di.estado_insumo, di.id_lista_compra
+"""
+
+CONSULTA_DETALLE = f"""
+    SELECT {CAMPOS_DETALLE}
+    FROM detalle_insumo di JOIN insumo i ON i.id_insumo = di.id_insumo
+    WHERE di.id_pedido = %s AND di.id_insumo = %s
+"""
+
+
 def listar_por_pedido(id_pedido: int) -> list[dict]:
     with conexion() as conn:
         return conn.execute(
-            """SELECT di.id_pedido, di.id_insumo, i.nombre, i.unidad_medida,
-                      di.cantidad, di.estado_insumo, di.id_lista_compra
+            f"""SELECT {CAMPOS_DETALLE}
                FROM detalle_insumo di
                JOIN insumo i ON i.id_insumo = di.id_insumo
                WHERE di.id_pedido = %s ORDER BY i.nombre""",
             (id_pedido,),
         ).fetchall()
-
-
-CONSULTA_DETALLE = """
-    SELECT di.id_pedido, di.id_insumo, i.nombre, i.unidad_medida,
-           di.cantidad, di.estado_insumo, di.id_lista_compra
-    FROM detalle_insumo di JOIN insumo i ON i.id_insumo = di.id_insumo
-    WHERE di.id_pedido = %s AND di.id_insumo = %s
-"""
 
 
 def _obtener_detalle(conn, id_pedido: int, id_insumo: int) -> dict | None:
