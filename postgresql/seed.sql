@@ -44,20 +44,35 @@ INSERT INTO pago (id_pedido, monto, metodo_pago) VALUES
     (5, 40000, 'TRANSFERENCIA'),
     (5, 37350, 'EFECTIVO');
 
-INSERT INTO insumo (nombre, stock_actual, unidad_medida) VALUES
-    ('Hilo negro', 12, 'UNIDADES'),
-    ('Cierre invisible 40 cm', 4, 'UNIDADES'),
-    ('Entretela termoadhesiva', 8.50, 'METROS'),
-    ('Botón nácar 18 mm', 20, 'UNIDADES'),
-    ('Forro satinado azul', 3.00, 'METROS');
+INSERT INTO insumo (nombre, unidad_medida) VALUES
+    ('Hilo negro', 'UNIDADES'),
+    ('Cierre invisible 40 cm', 'UNIDADES'),
+    ('Entretela termoadhesiva', 'METROS'),
+    ('Botón nácar 18 mm', 'UNIDADES'),
+    ('Forro satinado azul', 'METROS');
 
-INSERT INTO lista_compra DEFAULT VALUES;
+-- El stock existente entra como inventario inicial: no hay saldo sin asiento.
+INSERT INTO movimiento_insumo (id_insumo, cantidad, motivo, observacion) VALUES
+    (1, 12, 'INVENTARIO_INICIAL', 'Recuento de apertura'),
+    (2, 4, 'INVENTARIO_INICIAL', 'Recuento de apertura'),
+    (3, 8.50, 'INVENTARIO_INICIAL', 'Recuento de apertura'),
+    (4, 20, 'INVENTARIO_INICIAL', 'Recuento de apertura'),
+    (5, 3.00, 'INVENTARIO_INICIAL', 'Recuento de apertura');
 
-INSERT INTO detalle_insumo (id_pedido, id_insumo, id_lista_compra, cantidad, estado_insumo) VALUES
-    (1, 1, NULL, 1, 'COMPRADO'),
-    (2, 3, NULL, 1.50, 'COMPRADO'),
-    (2, 4, 1, 6, 'PENDIENTE_COMPRA'),
-    (3, 2, 1, 1, 'PENDIENTE_COMPRA'),
-    (3, 5, 1, 2.50, 'PENDIENTE_COMPRA'),
-    (4, 2, NULL, 1, 'PENDIENTE_COMPRA'),
-    (5, 1, NULL, 2, 'COMPRADO');
+-- Lo que cada pedido necesita. Nada más: si hay que comprarlo lo decide la
+-- cuenta entre lo requerido y lo que hay, no una marca escrita a mano.
+INSERT INTO detalle_insumo (id_pedido, id_insumo, cantidad, estado_insumo) VALUES
+    (1, 1, 1, 'CONSUMIDO'),
+    (2, 3, 1.50, 'CONSUMIDO'),
+    (2, 4, 6, 'REQUERIDO'),
+    (3, 2, 1, 'REQUERIDO'),
+    (3, 5, 2.50, 'REQUERIDO'),
+    (4, 2, 1, 'REQUERIDO'),
+    (5, 1, 2, 'CONSUMIDO');
+
+-- Los consumos ya hechos también dejan su movimiento, para que el stock
+-- cuadre con lo que efectivamente salió del estante.
+INSERT INTO movimiento_insumo (id_insumo, cantidad, motivo, id_pedido, observacion) VALUES
+    (1, -1, 'CONSUMO', 1, 'Consumo del pedido #1'),
+    (3, -1.50, 'CONSUMO', 2, 'Consumo del pedido #2'),
+    (1, -2, 'CONSUMO', 5, 'Consumo del pedido #5');
