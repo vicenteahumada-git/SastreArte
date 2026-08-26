@@ -1,0 +1,52 @@
+# Blueprint de Render: un único servicio web que sirve la API y el frontend
+# ya compilado, más una base PostgreSQL.
+#
+# Render → New → Blueprint → apuntar a este repositorio.
+#
+# Node y npm vienen incluidos en todos los runtimes nativos, así que el
+# runtime de Python alcanza para compilar el frontend en el mismo paso.
+
+services:
+  - type: web
+    name: sastrearte
+    runtime: python
+    plan: free
+    # El plan gratuito duerme tras un rato sin visitas; la primera petición
+    # después tarda unos segundos en despertar el servicio.
+
+    buildCommand: |
+      pip install --no-cache-dir -r backend/requirements.txt
+      npm ci --prefix frontend
+      npm run build --prefix frontend
+
+    startCommand: ./start.sh
+
+    # Render consulta esta ruta para saber si el servicio quedó sano.
+    healthCheckPath: /api/salud
+
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: NODE_VERSION
+        value: "22"
+      # La cadena de conexión la resuelve Render desde la base de abajo.
+      # Para usar Neon en su lugar, comentá este bloque y el de `databases`,
+      # y declará DATABASE_URL con `sync: false` para cargarla a mano.
+      - key: DATABASE_URL
+        fromDatabase:
+          name: sastrearte-db
+          property: connectionString
+      - key: TASA_IVA
+        value: "0.19"
+      - key: ZONA_HORARIA
+        value: America/Santiago
+      - key: WEB_CONCURRENCY
+        value: "2"
+
+databases:
+  - name: sastrearte-db
+    databaseName: sastrearte
+    user: sastrearte
+    plan: free
+    # Ojo: la base gratuita de Render vence a los 90 días. Si el proyecto
+    # tiene que durar más, conviene una base externa permanente (Neon).

@@ -287,6 +287,47 @@ El tamaño se cambia en `@page { size }` dentro de
 carta completa. Los datos del taller
 —dirección, teléfono, horario de retiro— están en `frontend/src/modelos/taller.ts`.
 
+## Despliegue en Render
+
+Todo se publica como un **único servicio**: Flask sirve la API y el frontend ya
+compilado desde el mismo puerto, así que no hace falta un segundo servicio ni
+configurar CORS.
+
+En el panel de Render: **New → Blueprint** apuntando al repositorio. El
+`render.yaml` crea el servicio web y una base PostgreSQL, y conecta
+`DATABASE_URL` entre ambos. A partir de ahí:
+
+1. El build instala las dependencias del backend y compila el frontend con
+   Vite, dejando el resultado en `frontend/dist`. Node y npm vienen incluidos
+   en el runtime de Python, así que un solo servicio alcanza.
+2. Al arrancar, `start.sh` aplica `postgresql/schema.sql` **sólo si la base
+   está vacía** y levanta gunicorn. Es idempotente: en los despliegues
+   siguientes detecta que el esquema ya existe y no toca nada.
+3. Render consulta `/api/salud` para dar el servicio por sano.
+
+Dos cosas del plan gratuito que conviene saber:
+
+- El servicio **duerme tras un rato sin visitas**. La primera petición después
+  tarda unos segundos en despertarlo; para una demostración, conviene abrirlo
+  un minuto antes.
+- La base gratuita de Render **vence a los 90 días**. Si el proyecto tiene que
+  durar más, usá una base externa permanente: comentá el bloque `databases` y
+  la entrada `DATABASE_URL` del `render.yaml`, y cargá la cadena de conexión
+  desde el panel. El backend no distingue de dónde viene.
+
+`start.sh` sólo depende de `PORT` y `DATABASE_URL`, que es lo que inyecta
+cualquier plataforma de este tipo, así que migrar a otra no exige tocarlo.
+
+Para cargar además los datos de ejemplo, una sola vez:
+
+```bash
+python backend/inicializar_base.py --con-seed
+```
+
+Variables opcionales: `WEB_CONCURRENCY` (procesos de gunicorn, 2 por defecto) y
+`GUNICORN_TIMEOUT`. Las de negocio —`TASA_IVA`, `ZONA_HORARIA`— funcionan igual
+que en local.
+
 ## Cómo llega el frontend a la API
 
 El navegador nunca llama al backend por su puerto: pide a `/api` sobre el mismo
