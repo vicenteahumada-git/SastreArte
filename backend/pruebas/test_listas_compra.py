@@ -258,3 +258,18 @@ def test_no_se_quita_del_pedido_un_material_consumido(cliente_api, crear_pedido)
     )
     assert respuesta.status_code == 409
     assert _stock(cliente_api, insumo) == 8
+
+
+def test_el_nombre_del_material_no_distingue_mayusculas(cliente_api):
+    """La base y el servicio comparan igual: sin distinguir mayúsculas.
+
+    Si el índice fuera sobre `nombre` a secas, 'Hilo' pasaría el control de
+    la base y lo rechazaría la aplicación, que es peor que rechazarlo antes.
+    """
+    _material(cliente_api, "Hilo negro")
+    for variante in ("hilo negro", "HILO NEGRO", "Hilo Negro"):
+        repetido = cliente_api.post(
+            "/api/insumos",
+            json={"nombre": variante, "stock_actual": 0, "unidad_medida": "UNIDADES"},
+        )
+        assert repetido.status_code == 409, variante

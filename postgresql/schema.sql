@@ -104,7 +104,6 @@ CREATE TABLE insumo (
     -- movimientos siempre terminan discrepando, y entonces no hay forma de
     -- saber cuál de las dos miente. Ver vista_insumos.
     CONSTRAINT pk_insumo PRIMARY KEY (id_insumo),
-    CONSTRAINT uq_insumo_nombre UNIQUE (nombre),
     CONSTRAINT chk_unidad_medida CHECK (
         unidad_medida IN ('MM', 'CM', 'METROS', 'UNIDADES')
     )
@@ -231,6 +230,10 @@ CREATE INDEX idx_pedido_fecha_entrega ON pedido(fecha_entrega);
 CREATE INDEX idx_asignacion_trabajador ON asignacion(id_trabajador);
 CREATE INDEX idx_pago_pedido ON pago(id_pedido);
 CREATE INDEX idx_detalle_insumo_insumo ON detalle_insumo(id_insumo);
+-- Único sobre lower(nombre) y no sobre nombre a secas, porque el servicio
+-- compara sin distinguir mayúsculas: si no, "Hilo" e "hilo" pasarían el
+-- control de la base y los rechazaría la aplicación, que es peor.
+CREATE UNIQUE INDEX uq_insumo_nombre ON insumo (lower(nombre));
 CREATE INDEX idx_movimiento_insumo ON movimiento_insumo(id_insumo);
 CREATE INDEX idx_detalle_lista_insumo ON detalle_lista_compra(id_insumo);
 

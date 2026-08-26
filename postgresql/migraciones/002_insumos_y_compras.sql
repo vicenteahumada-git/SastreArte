@@ -53,7 +53,24 @@ FROM insumo
 WHERE stock_actual <> 0;
 
 ALTER TABLE insumo DROP COLUMN stock_actual;
-ALTER TABLE insumo ADD CONSTRAINT uq_insumo_nombre UNIQUE (nombre);
+
+-- Una base en uso puede tener el mismo material cargado dos veces. Antes de
+-- exigir unicidad se desempatan los repetidos agregando un sufijo, en vez de
+-- fusionarlos: fusionar obligaría a repuntar pedidos y compras, y dos filas
+-- con el mismo nombre no siempre son el mismo material. Renombrar es
+-- reversible; fusionar mal, no.
+WITH repetidos AS (
+    SELECT id_insumo,
+           ROW_NUMBER() OVER (PARTITION BY lower(nombre) ORDER BY id_insumo) AS orden
+    FROM insumo
+)
+UPDATE insumo i
+SET nombre = i.nombre || ' (' || r.orden || ')'
+FROM repetidos r
+WHERE r.id_insumo = i.id_insumo AND r.orden > 1;
+
+-- Sobre lower(nombre), que es como compara el servicio.
+CREATE UNIQUE INDEX uq_insumo_nombre ON insumo (lower(nombre));
 
 CREATE VIEW vista_insumos AS
 SELECT
