@@ -96,6 +96,9 @@ la fuente que consume el frontend.
 | `prioridad` | `BAJA`, `MEDIA`, `ALTA`, `URGENTE` |
 | `complejidad` | `BAJA`, `MEDIA`, `ALTA` |
 | `unidad_medida` | `MM`, `CM`, `METROS`, `UNIDADES` |
+| `estado_insumo` | `REQUERIDO`, `CONSUMIDO` |
+| `estado` (lista de compra) | `ABIERTA`, `RECIBIDA`, `ANULADA` |
+| `motivo` (movimiento) | `INVENTARIO_INICIAL`, `COMPRA`, `CONSUMO`, `AJUSTE`, `DEVOLUCION` |
 
 `UNIDADES` cubre lo que se cuenta de a uno —botones, cierres, conos de hilo— y
 no se mide en largo. Las unidades las expone `GET /api/insumos/opciones`.
@@ -173,6 +176,49 @@ saldo con la suya.
 Los importes siguen sin guardarse porque son derivados: almacenarlos abriría
 la puerta a que el total y sus componentes se contradigan.
 
+### Materiales, requerimientos y compras
+
+Tres cosas distintas, en tres tablas distintas. Antes `detalle_insumo` cumplía
+los tres papeles a la vez —qué necesita un pedido, qué hay que comprar y qué se
+compró— y eso producía cinco inconsistencias, todas reproducidas antes de
+corregirlas:
+
+1. El stock nunca se movía: asociar un material a un pedido o marcarlo comprado
+   dejaba `stock_actual` igual. Era una libreta que nadie actualizaba.
+2. Se pedía comprar material que estaba en el estante, porque la consulta de
+   pendientes no miraba el stock.
+3. Un material devuelto a pendiente quedaba trabado: seguía figurando como
+   faltante pero ninguna lista nueva lo tomaba.
+4. El total de pendientes contaba también lo ya listado, así que no era lo que
+   iba a entrar en la lista siguiente.
+5. Borrar un pedido vaciaba listas de compra ya generadas, alterando hacia
+   atrás un documento que ya se había usado.
+
+El modelo actual:
+
+| Tabla | Responde a |
+|---|---|
+| `detalle_insumo` | Qué necesita un pedido, y si ya se consumió. |
+| `movimiento_insumo` | Cada entrada y salida de bodega, con su motivo. |
+| `lista_compra` + `detalle_lista_compra` | Qué se salió a comprar y qué llegó. |
+
+**El stock no se guarda: se deriva.** `vista_insumos` lo suma desde los
+movimientos, igual que el IVA se calcula desde la tasa. Una cantidad
+almacenada y un libro de movimientos siempre terminan discrepando, y entonces
+no hay forma de saber cuál de los dos miente.
+
+**La cuenta de lo que falta** es `requerido − stock − en camino`. Los tres
+términos hacen falta: sin el stock se compra lo que está en el estante, y sin
+lo ya solicitado en listas abiertas se compra dos veces lo mismo.
+
+**La lista de compra es un documento.** Las cantidades se copian al generarla,
+así que a partir de ahí no depende de los pedidos que la originaron: borrar un
+pedido ya no la altera. Recibirla es lo que hace entrar el material a bodega, y
+admite recepción parcial. Anularla devuelve los faltantes a la cola.
+
+Borrar un pedido deja sus movimientos en el libro, sin documento asociado: la
+mercadería se movió igual, y el saldo tiene que seguir cuadrando.
+
 ### Credenciales de acceso
 
 `usuario` tiene `nombre_usuario` y `contrasena_hash`, ambos opcionales: no
@@ -204,13 +250,15 @@ sesión ni rutas protegidas, y el rol se sigue eligiendo en el encabezado.
   se calculan al momento.
 - Asignar un pedido a un único trabajador; un trabajador puede tener varios pedidos.
 - Registrar y consultar múltiples pagos o abonos.
-- Crear, modificar y eliminar insumos con unidad de medida acotada; asociarlos
-  a pedidos y cambiar su estado.
-- Consultar pendientes y generar listas de compra con el modelo SQL existente.
+- Crear, modificar y eliminar materiales; corregir el stock por recuento y
+  consultar el historial de movimientos de cada uno.
+- Anotar lo que necesita un pedido y marcar su consumo, que descuenta de bodega.
+- Generar listas de compra con lo que falta de verdad, recibirlas —lo que hace
+  entrar el material a bodega— o anularlas.
 - Crear y modificar trabajadores; la baja cambia su estado a `INACTIVO`.
 - Cambiar entre vista de Dueña y vista de Taller sin autenticación.
 
-No se implementan login, `Prenda`, `DetallePedido`, historial de asignaciones, movimientos históricos de stock ni `detalle_lista_compra`.
+No se implementan `Prenda`, `DetallePedido` ni historial de asignaciones.
 
 ## Datos iniciales
 
